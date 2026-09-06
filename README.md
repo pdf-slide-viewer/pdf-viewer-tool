@@ -5,6 +5,9 @@
 
 インストール不要。`index.html` をダブルクリックすればブラウザで動きます。
 
+**[→ 使い方ガイド（スクリーンショット付き）](https://claude.ai/code/artifact/afc64885-3f80-4dcc-9cf4-2550ce1b9c90)**
+**[→ ダウンロード（.zip / 約1.5MB）](https://github.com/euquidite-ui/pdf-viewer-tool/releases/latest)**
+
 ## 使い方
 
 | 開き方 | 手順 |
