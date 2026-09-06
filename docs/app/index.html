@@ -351,7 +351,7 @@ var tocList = $('tocList');
    ========================================================= */
 var S = {
   books: [], active: -1, uid: 0, epoch: 0,
-  mode: 'auto', rtl: true, cover: true, snap: true, zoom: 1, merge: false,
+  mode: 'single', rtl: true, cover: true, snap: true, zoom: 1, merge: false,
   displayH: 0, ready: false
 };
 function B(){ return S.active >= 0 ? S.books[S.active] : null; }
@@ -376,7 +376,7 @@ function busy(on, txt){
 }
 
 /* ---------------- 設定の復元 ---------------- */
-S.mode  = LS.get('mode', 'auto');
+S.mode  = LS.get('mode', 'single');
 S.rtl   = LS.get('rtl', true);
 S.cover = LS.get('cover', true);
 S.snap  = LS.get('snap', true);
