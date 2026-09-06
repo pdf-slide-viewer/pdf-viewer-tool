@@ -5,8 +5,8 @@
 
 インストール不要。`index.html` をダブルクリックすればブラウザで動きます。
 
-**[→ 使い方ガイド（スクリーンショット付き）](https://euquidite-ui.github.io/pdf-viewer-tool/)**
-**[→ ダウンロード（.zip / 約1.5MB）](https://github.com/euquidite-ui/pdf-viewer-tool/releases/latest)**
+**[→ 使い方ガイド（スクリーンショット付き）](https://pdf-slide-viewer.github.io/pdf-viewer-tool/)**
+**[→ ダウンロード（.zip / 約1.5MB）](https://github.com/pdf-slide-viewer/pdf-viewer-tool/releases/latest)**
 
 ## 使い方
 
