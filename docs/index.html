@@ -192,7 +192,8 @@ p.section-lede{color:var(--ink-soft); font-size:15px; margin:0 0 32px; max-width
       GitHubでソースを見る
     </a>
   </div>
-  <p class="meta-line">v1.1.0 ・ PC・スマホのブラウザで動作 ・ <span class="mono">MIT License</span></p>
+  <p class="meta-line">v1.1.1 ・ PC・スマホのブラウザで動作 ・ <span class="mono">MIT License</span>
+    ・ ZIP版は<b>完全オフライン</b>で使え、重いPDFの描画も<b>ワンテンポ滑らか</b>です</p>
 </header>
 
 <div class="wide">
@@ -247,6 +248,18 @@ p.section-lede{color:var(--ink-soft); font-size:15px; margin:0 0 32px; max-width
       <li><span class="mark">・</span><span><strong>選んだPDFは端末から出ません。</strong>ブラウザ版でも処理はすべて端末の中で完結します。通信が発生するのはツール本体を読み込む最初の1回だけで、PDFを開いたあとは何も送受信しません。完全にオフラインで使いたい場合はZIP版をお使いください。</span></li>
       <li><span class="mark">・</span><span><strong>スワイプでページ送り、タップでバーの開閉。</strong>画面を軽くタップすると上下のバーが隠れ、全画面で読めます。</span></li>
       <li><span class="mark">・</span><span><strong>見開きの本は横向きがおすすめです。</strong>縦向きのままだと見開き2ページ分が画面幅に収まらないため、左右に振りながら読むことになります。</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="wrap tight">
+  <h2 class="section-title">ブラウザ版とZIP版、どちらを使う？</h2>
+  <p class="section-lede">PCでもスマホでも、まずは<a href="app/">ブラウザ版</a>を開けば十分です。ZIP版は次のような場合に。</p>
+  <div class="safety">
+    <ul>
+      <li><span class="mark">・</span><span><strong>完全にオフラインで使いたい。</strong>ブラウザ版もPDFの処理自体はオフラインで動きますが、最初にツール本体を読み込む通信だけは発生します。ネット接続がまったく無い環境ではZIP版を。</span></li>
+      <li><span class="mark">・</span><span><strong>数百ページの重いPDFをページ送りで滑らかに読みたい。</strong>同梱の<span class="mono">起動.bat</span>から開くとPDFの描画が別スレッドになり、引っかかりが減ります（ブラウザ版・<span class="mono">index.html</span>直接起動はメインスレッド描画）。</span></li>
+      <li><span class="mark">・</span><span><strong>友人に丸ごと渡したい。</strong>フォルダごとZIPにして送るだけで、相手はダウンロード＆展開して使えます。</span></li>
     </ul>
   </div>
 </section>

@@ -7,7 +7,7 @@
 
 **[→ ブラウザで開く（インストール不要・スマホ可）](https://pdf-slide-viewer.github.io/pdf-viewer-tool/app/)**
 **[→ 使い方ガイド（スクリーンショット付き）](https://pdf-slide-viewer.github.io/pdf-viewer-tool/)**
-**[→ ダウンロード（.zip / 約1.5MB）](https://github.com/pdf-slide-viewer/pdf-viewer-tool/releases/latest)**
+**[→ ダウンロード（.zip / 約1.5MB）](https://github.com/pdf-slide-viewer/pdf-viewer-tool/releases/latest)**（完全オフライン・重いPDFでも滑らか）
 
 ## 使い方
 
