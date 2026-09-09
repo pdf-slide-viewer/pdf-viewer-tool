@@ -186,6 +186,8 @@
               border:1px solid transparent;color:inherit;opacity:.65}
   .tih button:hover{background:#4a4e57;opacity:1}
   .ti canvas{display:block;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+  #tocList.zoomed .ti canvas{cursor:grab}
+  #tocList.zoomed .ti canvas.grabbing{cursor:grabbing}
   #tocGrip{position:absolute;top:0;bottom:0;right:-3px;width:7px;cursor:col-resize;z-index:29}
   #tocGrip:hover{background:var(--accent);opacity:.45}
 
@@ -755,6 +757,7 @@ function renderToc(){
   tocEpoch++;
   var my = tocEpoch, b = B();
   tocList.innerHTML = '';
+  tocList.classList.toggle('zoomed', S.tocZoom > 1);  // 拡大中はドラッグで動かせるようにする
   if (!S.tocOpen) return;          // 閉じているあいだは描かない
 
   if (!b){
@@ -1314,6 +1317,30 @@ function endDrag(){
 }
 viewer.addEventListener('pointerup', endDrag);
 viewer.addEventListener('pointercancel', endDrag);
+
+/* ---------------- 目次パネル: 拡大した登録ページをドラッグで移動 ---------------- */
+var tocDrag = null;
+tocList.addEventListener('pointerdown', function(e){
+  if (e.pointerType === 'touch') return;          // タッチは標準スクロールに任せる
+  if (e.button !== 0 || S.tocZoom <= 1 || e.target.tagName !== 'CANVAS') return;
+  tocDrag = { x: e.clientX, y: e.clientY, left: tocList.scrollLeft, top: tocList.scrollTop };
+  try{ tocList.setPointerCapture(e.pointerId); }catch(err){}
+  e.target.classList.add('grabbing');
+  e.preventDefault();
+});
+tocList.addEventListener('pointermove', function(e){
+  if (!tocDrag) return;
+  tocList.scrollLeft = tocDrag.left - (e.clientX - tocDrag.x);
+  tocList.scrollTop  = tocDrag.top  - (e.clientY - tocDrag.y);
+});
+function endTocDrag(){
+  if (!tocDrag) return;
+  tocDrag = null;
+  var cv = tocList.querySelector('canvas.grabbing');
+  if (cv) cv.classList.remove('grabbing');
+}
+tocList.addEventListener('pointerup', endTocDrag);
+tocList.addEventListener('pointercancel', endTocDrag);
 
 /* ---------------- タップでバーを開閉（スマホには H キーが無い） ---------------- */
 var tap = null;
