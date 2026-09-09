@@ -359,8 +359,42 @@ function B(){ return S.active >= 0 ? S.books[S.active] : null; }
 var LS = {
   get: function(k, d){ try{ var v = localStorage.getItem('pdfslide:'+k);
                             return v === null ? d : JSON.parse(v); }catch(e){ return d; } },
-  set: function(k, v){ try{ localStorage.setItem('pdfslide:'+k, JSON.stringify(v)); }catch(e){} }
+  set: function(k, v){ try{ localStorage.setItem('pdfslide:'+k, JSON.stringify(v)); }catch(e){} },
+  remove: function(k){ try{ localStorage.removeItem('pdfslide:'+k); }catch(e){} }
 };
+
+/* ---------------- 開いたPDFごとの保存データを上限つきで管理 ----------------
+   本のキーは「読んでいたページ」「目次登録」「ページ番号対応」の3種を持つ。
+   何もしないと開いたファイルの分だけ localStorage に永久に残るため、
+   最近開いた PDF_REG_CAP 冊だけを残し、古いものから自動で消す。 */
+var PDF_REG_CAP = 60;
+function pruneRegistry(reg){
+  while (reg.length > PDF_REG_CAP){
+    var old = reg.pop();
+    LS.remove(old.k); LS.remove('toc:' + old.k); LS.remove('anc:' + old.k); LS.remove('off:' + old.k);
+  }
+  LS.set('reg', reg);
+}
+function touchBook(key){
+  var reg = LS.get('reg', []);
+  if (!Array.isArray(reg)) reg = [];
+  reg = reg.filter(function(e){ return e && e.k !== key; });
+  reg.unshift({ k: key, t: Date.now() });
+  pruneRegistry(reg);
+}
+(function migrateRegistry(){
+  // 今回のアップデート以前から使っている人は、登録の無い記録が既にあるかもしれない。
+  // 一度だけ既存のキーを拾って登録し、上限を超えていれば古い扱いのものから間引く
+  if (localStorage.getItem('pdfslide:reg') !== null) return;
+  var reg = [];
+  try{
+    for (var i = 0; i < localStorage.length; i++){
+      var k = localStorage.key(i);
+      if (k && k.indexOf('pdfslide:pos:') === 0) reg.push({ k: k.slice(9), t: 0 });
+    }
+  }catch(e){}
+  pruneRegistry(reg);
+})();
 
 var toastTimer;
 function toast(msg, isErr){
@@ -519,6 +553,7 @@ function loadBook(files){
   });
 
   return chain.then(function(){
+    touchBook(book.key);   // 開いたPDFとして登録（古い記録は上限を超えた分から自動で消える）
     book.index = LS.get(book.key, 0) | 0;
     book.toc = (LS.get('toc:' + book.key, []) || []).filter(function(i){
       return typeof i === 'number' && i >= 0 && i < book.pages.length;
