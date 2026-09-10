@@ -68,15 +68,16 @@
 
   /* ---------- 本体 ---------- */
   #viewer{position:absolute;top:var(--hbar);bottom:var(--hfoot);left:0;right:0;
-          overflow-x:auto;overflow-y:hidden;outline:none;cursor:grab;
-          overscroll-behavior-x:contain;  /* 横スワイプでブラウザが「戻る」のを防ぐ */
+          overflow:auto;outline:none;cursor:grab;
+          overscroll-behavior:contain;  /* スワイプでブラウザが「戻る」等を起こすのを防ぐ */
           scrollbar-width:thin;scrollbar-color:#4a4e57 transparent}
   body.hasbook #viewer{top:calc(var(--hbar) + var(--htab))}
   #viewer.snap{scroll-snap-type:x mandatory}
   #viewer.grabbing{cursor:grabbing}
-  #viewer::-webkit-scrollbar{height:10px}
+  #viewer::-webkit-scrollbar{width:10px;height:10px}
   #viewer::-webkit-scrollbar-thumb{background:#4a4e57;border-radius:5px}
-  #track{display:flex;align-items:center;height:100%;gap:8px;width:max-content}
+  /* 拡大して画面に収まらないとき用。収まっているときは layout() の余白で見た目上センタリングする */
+  #track{display:flex;align-items:flex-start;height:100%;gap:8px;width:max-content}
   .spread{flex:none;display:flex;align-items:center;scroll-snap-align:center;
           background:var(--paper);box-shadow:0 2px 9px rgba(0,0,0,.55);position:relative}
   .pg{position:relative;background:var(--paper);flex:none}
@@ -1110,6 +1111,10 @@ function layout(){
   // 最初と最後の見開きも中央に置けるだけの余白を確保
   track.style.paddingLeft  = Math.max(8, (vw - track.firstElementChild.offsetWidth) / 2) + 'px';
   track.style.paddingRight = Math.max(8, (vw - track.lastElementChild.offsetWidth) / 2) + 'px';
+  // 拡大して画面に収まらないときは上下センタリングをやめ、ドラッグ／スクロールで全体を見られるようにする
+  var vpad = Math.max(0, (vh - H) / 2);
+  track.style.paddingTop    = vpad + 'px';
+  track.style.paddingBottom = vpad + 'px';
 
   slider.max = String(Math.max(0, b.spreads.length - 1));
   slider.disabled = b.spreads.length <= 1;
@@ -1296,16 +1301,17 @@ viewer.addEventListener('pointerdown', function(e){
   // タッチはブラウザ標準の横スクロール（＋CSSスナップ）に任せる。二重に動かさない
   if (e.pointerType === 'touch') return;
   if (e.button !== 0 || !B()) return;
-  drag = { x: e.clientX, left: viewer.scrollLeft, moved: false };
+  drag = { x: e.clientX, y: e.clientY, left: viewer.scrollLeft, top: viewer.scrollTop, moved: false };
   try{ viewer.setPointerCapture(e.pointerId); }catch(err){}
   viewer.classList.add('grabbing');
   viewer.style.scrollSnapType = 'none';
 });
 viewer.addEventListener('pointermove', function(e){
   if (!drag) return;
-  var dx = e.clientX - drag.x;
-  if (Math.abs(dx) > 3) drag.moved = true;
+  var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) drag.moved = true;
   viewer.scrollLeft = drag.left - dx;
+  viewer.scrollTop  = drag.top  - dy;   // 拡大して縦にはみ出たときも上下に動かせるように
 });
 function endDrag(){
   if (!drag) return;
