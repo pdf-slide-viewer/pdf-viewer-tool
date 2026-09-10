@@ -136,6 +136,16 @@
   #toast.show{opacity:1}
   .err{color:#ff9a9a}
 
+  #resume{position:absolute;left:50%;top:calc(var(--hbar) + 10px);transform:translateX(-50%);
+          z-index:33;display:none;align-items:center;gap:10px;
+          background:#2c3f5e;border:1px solid #4a6ba0;border-radius:8px;
+          padding:8px 10px 8px 14px;font-size:12.5px;box-shadow:0 4px 14px rgba(0,0,0,.4);
+          max-width:min(92vw,520px)}
+  #resume.show{display:flex}
+  #resume button{white-space:nowrap}
+  #resumeGo{background:var(--accent);border-color:var(--accent);color:#10233f;font-weight:600}
+  #resumeX{padding:5px 9px}
+
   /* ---------- 目次パネル ---------- */
   #toc{position:absolute;left:0;top:var(--hbar);bottom:var(--hfoot);width:var(--wtoc);
        z-index:28;display:none;flex-direction:column;background:var(--tab);
@@ -325,6 +335,11 @@
 <div id="drop">ここにドロップして開く</div>
 <div id="load"><span id="loadTxt">読み込み中…</span></div>
 <div id="toast"></div>
+<div id="resume">
+  <span id="resumeMsg"></span>
+  <button id="resumeGo">開く</button>
+  <button id="resumeX" title="今回は開かない">×</button>
+</div>
 
 <input type="file" id="file" accept="application/pdf,.pdf" multiple hidden>
 
@@ -399,6 +414,105 @@ function touchBook(key){
   pruneRegistry(reg);
 })();
 
+/* ---------------- 開いていたタブの復元（対応ブラウザのみ） ----------------
+   File System Access API に対応したブラウザ（Chrome/Edge等）でPDFを開いた場合、
+   ファイルの「実体」ではなく参照（ハンドル）だけを IndexedDB に保存しておき、
+   次回起動時にそのハンドルからファイルを読み直してタブを復元する。
+   非対応ブラウザ（Firefox/Safari・多くのスマホ）では今までどおり復元されない。 */
+var FSA_OK = 'showOpenFilePicker' in window && 'indexedDB' in window;
+var IDB = {
+  db: null,
+  open: function(){
+    if (this.db) return Promise.resolve(this.db);
+    var self = this;
+    return new Promise(function(resolve, reject){
+      var req = indexedDB.open('pdfslide', 1);
+      req.onupgradeneeded = function(){ req.result.createObjectStore('kv'); };
+      req.onsuccess = function(){ self.db = req.result; resolve(self.db); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  },
+  get: function(key){
+    return this.open().then(function(db){
+      return new Promise(function(resolve){
+        var tx = db.transaction('kv', 'readonly');
+        var req = tx.objectStore('kv').get(key);
+        req.onsuccess = function(){ resolve(req.result); };
+        req.onerror = function(){ resolve(undefined); };
+      });
+    }).catch(function(){ return undefined; });
+  },
+  set: function(key, val){
+    return this.open().then(function(db){
+      return new Promise(function(resolve){
+        var tx = db.transaction('kv', 'readwrite');
+        tx.objectStore('kv').put(val, key);
+        tx.oncomplete = function(){ resolve(); };
+        tx.onerror = function(){ resolve(); };
+      });
+    }).catch(function(){});
+  }
+};
+function persistOpenTabs(){
+  if (!FSA_OK) return;
+  var tabs = S.books.filter(function(b){ return b.handles; })
+                     .map(function(b){ return { handles: b.handles, key: b.key }; });
+  var active = B();
+  IDB.set('tabs', { tabs: tabs, activeKey: active ? active.key : null });
+}
+function restoreTabs(){
+  if (!FSA_OK) return;
+  IDB.get('tabs').then(function(saved){
+    var tabs = saved && saved.tabs;
+    if (!tabs || !tabs.length) return;
+    var ready = [], pending = [];
+    Promise.all(tabs.map(function(t){
+      return Promise.all(t.handles.map(function(h){
+        return h.queryPermission({ mode: 'read' }).catch(function(){ return 'denied'; });
+      })).then(function(states){
+        (states.every(function(s){ return s === 'granted'; }) ? ready : pending).push(t);
+      });
+    })).then(function(){
+      var openGroup = function(t){
+        return Promise.all(t.handles.map(function(h){
+          return h.getFile().then(function(f){ f._handle = h; return f; });
+        })).then(function(files){
+          return openFiles(files, files.length > 1, true);
+        }).catch(function(){});   // ファイルが移動・削除されていた場合はそのタブだけ諦める
+      };
+      ready.reduce(function(p, t){ return p.then(function(){ return openGroup(t); }); }, Promise.resolve())
+        .then(function(){
+          if (saved.activeKey){
+            var idx = -1;
+            for (var i = 0; i < S.books.length; i++) if (S.books[i].key === saved.activeKey) idx = i;
+            if (idx >= 0) activate(idx);
+          }
+          if (pending.length) showResumeBar(pending);
+        });
+    });
+  });
+}
+function showResumeBar(pending){
+  var bar = $('resume'), n = pending.reduce(function(a,t){ return a + t.handles.length; }, 0);
+  $('resumeMsg').textContent = '前回開いていたPDF' + (pending.length > 1 ? (n + '件') : '') + 'を再度開きますか？';
+  bar.classList.add('show');
+  $('resumeGo').onclick = function(){
+    bar.classList.remove('show');
+    Promise.all(pending.map(function(t){
+      return Promise.all(t.handles.map(function(h){ return h.requestPermission({ mode: 'read' }); }))
+        .then(function(states){
+          if (!states.every(function(s){ return s === 'granted'; })) throw new Error('denied');
+          return Promise.all(t.handles.map(function(h){
+            return h.getFile().then(function(f){ f._handle = h; return f; });
+          }));
+        })
+        .then(function(files){ openFiles(files, files.length > 1, true); })
+        .catch(function(){});
+    }));
+  };
+  $('resumeX').onclick = function(){ bar.classList.remove('show'); };
+}
+
 var toastTimer;
 function toast(msg, isErr){
   var t = $('toast');
@@ -443,7 +557,23 @@ if (location.protocol === 'file:') {
 /* =========================================================
    ファイルを開く
    ========================================================= */
-$('btnOpen').onclick = $('btnOpen2').onclick = function(){ fileInput.click(); };
+function openViaPicker(){
+  if (!FSA_OK){ fileInput.click(); return; }
+  window.showOpenFilePicker({
+    multiple: true, excludeAcceptAllOption: false,
+    types: [{ description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }]
+  }).then(function(handles){
+    return Promise.all(handles.map(function(h){
+      return h.getFile().then(function(f){ f._handle = h; return f; });
+    }));
+  }).then(function(files){
+    openFiles(files);
+  }).catch(function(err){
+    if (err && err.name === 'AbortError') return;   // キャンセルは何もしない
+    fileInput.click();                               // 何かあれば従来方式へ
+  });
+}
+$('btnOpen').onclick = $('btnOpen2').onclick = openViaPicker;
 fileInput.onchange = function(e){
   if (e.target.files.length) openFiles(Array.prototype.slice.call(e.target.files));
   fileInput.value = '';
@@ -461,11 +591,28 @@ window.addEventListener('dragleave', function(e){
 });
 window.addEventListener('drop', function(e){
   e.preventDefault(); dragDepth = 0; $('drop').classList.remove('show');
-  var fs = Array.prototype.slice.call(e.dataTransfer.files).filter(function(f){
-    return /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
+  var items = e.dataTransfer.items;
+  var picks;
+  if (FSA_OK && items && items.length && items[0].getAsFileSystemHandle){
+    // ドロップされた瞬間（同期の間）にしか items へアクセスできないので、ここで拾っておく
+    picks = Array.prototype.slice.call(items)
+      .filter(function(it){ return it.kind === 'file'; })
+      .map(function(it){
+        return it.getAsFileSystemHandle().then(function(h){
+          if (!h || h.kind !== 'file') return it.getAsFile();
+          return h.getFile().then(function(f){ f._handle = h; return f; });
+        }).catch(function(){ return it.getAsFile(); });
+      });
+  } else {
+    picks = Array.prototype.slice.call(e.dataTransfer.files).map(function(f){ return Promise.resolve(f); });
+  }
+  Promise.all(picks).then(function(files){
+    var fs = files.filter(function(f){
+      return f && (/\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+    });
+    if (fs.length) openFiles(fs);
+    else toast('PDFファイルをドロップしてください', true);
   });
-  if (fs.length) openFiles(fs);
-  else toast('PDFファイルをドロップしてください', true);
 });
 
 function keyOf(files){
@@ -566,8 +713,12 @@ function loadBook(files){
       var old = LS.get('off:' + book.key, 0) | 0;
       book.anchors = old ? [{ p: old, n: 1 }] : [];
     }
+    if (files.every(function(f){ return f._handle; })){
+      book.handles = files.map(function(f){ return f._handle; });
+    }
     S.books.push(book);
     renderTabs();
+    persistOpenTabs();
     return S.books.length - 1;
   });
 }
@@ -600,7 +751,7 @@ function openUrls(urls, merge){
        });
 }
 (function(){
-  if (!location.search) return;
+  if (!location.search){ restoreTabs(); return; }
   var srcs = [], merge;
   location.search.substring(1).split('&').forEach(function(kv){
     var i = kv.indexOf('='); if (i < 0) return;
@@ -609,6 +760,7 @@ function openUrls(urls, merge){
     else if (k === 'merge') merge = (v !== '0' && v !== 'false');
   });
   if (srcs.length) openUrls(srcs, merge);
+  else restoreTabs();
 })();
 
 /* =========================================================
@@ -641,7 +793,7 @@ function renderTabs(){
 
   var add = document.createElement('button');
   add.id = 'tabAdd'; add.textContent = '＋'; add.title = 'PDFを追加で開く (O)';
-  add.onclick = function(){ fileInput.click(); };
+  add.onclick = openViaPicker;
   tabsBar.appendChild(add);
 
   body.classList.toggle('hasbook', S.books.length > 0);
@@ -666,6 +818,7 @@ function activate(i){
   updateSideSelect();
   renderToc();
   viewer.focus();
+  persistOpenTabs();   // どのタブがアクティブだったかも次回起動用に覚えておく
 }
 function scrollTabIntoView(i){
   var el = tabsBar.children[i];
@@ -682,6 +835,7 @@ function closeBook(i){
   detach(b);
   b.docs.forEach(function(d){ try{ d.pdf.destroy(); }catch(e){} });
   S.books.splice(i, 1);
+  persistOpenTabs();
 
   if (!S.books.length){
     S.active = -1;
@@ -1388,7 +1542,7 @@ window.addEventListener('keydown', function(e){
     case 'w': case 'W': if (S.active >= 0) closeBook(S.active); break;
     case 't': setToc(!S.tocOpen); break;
     case 'T': tocAdd(); break;
-    case 'o': case 'O': fileInput.click(); break;
+    case 'o': case 'O': openViaPicker(); break;
     case 'f': case 'F': toggleFull(); break;
     case 'h': case 'H': setChromeless(!body.classList.contains('chromeless')); break;
     case 's': case 'S': setSnap(!S.snap); break;
