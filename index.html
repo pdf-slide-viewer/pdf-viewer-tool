@@ -1389,7 +1389,7 @@ function step(d){ var b = B(); if (b) goTo(b.index + d); }
 function stepOrScroll(d){
   if (!B()) return;
   if (S.snap){ step(d); return; }
-  viewer.scrollLeft += d * (S.rtl ? -1 : 1) * Math.max(80, S.displayH * 0.3);
+  viewer.scrollLeft += d * (S.rtl ? -1 : 1) * Math.max(40, S.displayH * 0.12);
 }
 
 function nearestIndex(){
