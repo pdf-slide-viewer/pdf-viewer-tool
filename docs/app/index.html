@@ -623,9 +623,11 @@ function findBook(key){
   return -1;
 }
 
-/* files: File[]  /  merge: 1冊にまとめるか（省略時はツールバーの設定） */
+/* files: File[]  /  merge: 1冊にまとめるか（省略時はツールバーの設定）
+   戻り値: 読み込み完了を示す Promise（restoreTabs が複数タブを順番に、
+   かつ全部終わってからアクティブタブを復元するために待ち合わせで使う） */
 function openFiles(files, merge, keepOrder){
-  if (!files.length) return;
+  if (!files.length) return Promise.resolve();
   if (merge === undefined) merge = S.merge;
   if (!keepOrder)
     files.sort(function(a,b){ return a.name.localeCompare(b.name, 'ja', {numeric:true}); });
@@ -645,7 +647,7 @@ function openFiles(files, merge, keepOrder){
     });
   });
 
-  chain.then(function(){
+  return chain.then(function(){
     if (firstNew >= 0) activate(firstNew);
     if (!opened && groups.length) toast('すでに開いているPDFです');
   }).catch(function(err){
