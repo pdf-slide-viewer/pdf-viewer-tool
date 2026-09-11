@@ -1384,6 +1384,13 @@ function goTo(i, smooth){
   updateWindow(); updateLabel(); save();
 }
 function step(d){ var b = B(); if (b) goTo(b.index + d); }
+/* スナップOFF（自由スクロール）中は、矢印キーもホイールと同じく少しずつ動かす。
+   スナップONのときは従来どおり1見開き分ジャンプする */
+function stepOrScroll(d){
+  if (!B()) return;
+  if (S.snap){ step(d); return; }
+  viewer.scrollLeft += d * (S.rtl ? -1 : 1) * Math.max(80, S.displayH * 0.3);
+}
 
 function nearestIndex(){
   var b = B();
@@ -1532,11 +1539,11 @@ window.addEventListener('keydown', function(e){
   }
 
   switch (e.key){
-    case 'ArrowRight': step(S.rtl ? -1 : 1); break;
-    case 'ArrowLeft':  step(S.rtl ?  1 : -1); break;
-    case 'ArrowDown': case 'PageDown': step(1); break;
-    case 'ArrowUp':   case 'PageUp':   step(-1); break;
-    case ' ': step(e.shiftKey ? -1 : 1); break;
+    case 'ArrowRight': stepOrScroll(S.rtl ? -1 : 1); break;
+    case 'ArrowLeft':  stepOrScroll(S.rtl ?  1 : -1); break;
+    case 'ArrowDown': case 'PageDown': stepOrScroll(1); break;
+    case 'ArrowUp':   case 'PageUp':   stepOrScroll(-1); break;
+    case ' ': stepOrScroll(e.shiftKey ? -1 : 1); break;
     case 'Home': goTo(0); break;
     case 'End':  if (B()) goTo(B().spreads.length - 1); break;
     case '[': cycleTab(-1); break;
